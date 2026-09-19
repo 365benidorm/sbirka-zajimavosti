@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Sbírka zajímavostí</title>
+<meta name="description" content="Vlož nebo sdílej odkaz — automaticky se uloží do sbírky." />
+<link rel="manifest" href="./manifest.json" />
+<meta name="theme-color" content="#29594F" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
+<link rel="icon" href="./icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EFE9DA;
+    --card: #FAF7EE;
+    --ink: #2A2521;
+    --ink-soft: #6B6255;
+    --ink-faint: #948B7C;
+    --line: #D8CFB8;
+    --line-strong: #C3B79A;
+    --teal: #29594F;
+    --teal-tint: #E1ECE7;
+    --brass: #8C6A34;
+    --rust: #9C4A32;
+    --shadow: rgba(42, 37, 33, 0.14);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #1D1A16;
+      --card: #272220;
+      --ink: #ECE4D3;
+      --ink-soft: #B6AC98;
+      --ink-faint: #83786A;
+      --line: #3C3530;
+      --line-strong: #4C433B;
+      --teal: #6FBFAD;
+      --teal-tint: #223531;
+      --brass: #D2A968;
+      --rust: #D9836A;
+      --shadow: rgba(0, 0, 0, 0.4);
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Source Sans 3", system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  }
+  h1, .serif { font-family: "Fraunces", Georgia, serif; }
+  button { font-family: inherit; }
+  a { color: var(--teal); }
+
+  header {
+    padding: 18px 18px 6px;
+    text-align: center;
+  }
+  header h1 { margin: 0; font-size: 1.35rem; font-weight: 700; }
+
+  .banner {
+    margin: 10px 18px 0; padding: 9px 13px; border-radius: 8px;
+    background: var(--teal-tint); color: var(--ink-soft); font-size: 0.82rem;
+    border: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .banner button { flex: none; }
+
+  main { max-width: 560px; margin: 0 auto; padding: 10px 18px 24px; }
+  .tab-panel[hidden] { display: none; }
+
+  /* ---------- Stáhnout tab ---------- */
+  .capture { padding-top: 28px; }
+  .capture-icon { text-align: center; font-size: 2.4rem; margin-bottom: 6px; }
+  .capture input {
+    width: 100%; border: 1px solid var(--line-strong); background: var(--card);
+    color: var(--ink); border-radius: 10px; padding: 13px 14px; font-size: 1rem;
+    font-family: inherit; outline: none; margin-bottom: 10px;
+  }
+  .capture input:focus { border-color: var(--teal); }
+  .capture input#captureUrl { font-size: 1.05rem; }
+  .btn {
+    border: none; border-radius: 10px; padding: 13px; font-size: 1rem;
+    cursor: pointer; font-weight: 600; width: 100%;
+  }
+  .btn.primary { background: var(--teal); color: var(--teal-tint); }
+  .btn.primary:disabled { opacity: 0.4; }
+  .btn.ghost { background: transparent; color: var(--ink-soft); border: 1px solid var(--line-strong); }
+  .capture-hint { text-align: center; font-size: 0.82rem; color: var(--ink-faint); margin-top: 14px; }
+
+  /* ---------- Sbírka tab ---------- */
+  .search-wrap {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 9px 12px; margin-bottom: 10px;
+  }
+  .search-wrap svg { flex: none; opacity: 0.55; }
+  .search-wrap input {
+    border: none; outline: none; background: transparent; color: var(--ink);
+    font-size: 0.95rem; width: 100%; font-family: inherit;
+  }
+  .search-wrap input::placeholder { color: var(--ink-faint); }
+
+  .backup-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .backup-row button {
+    flex: 1; font-size: 0.8rem; padding: 8px; border-radius: 8px;
+    border: 1px dashed var(--line-strong); background: none; color: var(--ink-faint); cursor: pointer;
+  }
+  .backup-row button:hover { border-color: var(--teal); color: var(--teal); }
+  #importStatus { font-size: 0.76rem; color: var(--ink-faint); margin: -6px 0 12px; }
+
+  .empty { text-align: center; padding: 50px 20px; color: var(--ink-soft); }
+  .empty .glyph { font-size: 2.2rem; margin-bottom: 10px; }
+  .empty h2 { font-size: 1.1rem; margin: 0 0 6px; }
+  .empty p { margin: 0; font-size: 0.9rem; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; margin-bottom: 10px; padding: 12px 14px;
+    box-shadow: 0 1px 3px var(--shadow);
+    transition: background 0.6s, border-color 0.6s;
+  }
+  .card.flash { background: var(--teal-tint); border-color: var(--teal); }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .card-link {
+    font-size: 0.95rem; color: var(--teal); text-decoration: none; word-break: break-all;
+    display: block; flex: 1;
+  }
+  .card-link:hover { text-decoration: underline; }
+  .icon-btn {
+    border: none; background: transparent; color: var(--ink-faint);
+    cursor: pointer; padding: 3px 6px; border-radius: 6px; line-height: 1; font-size: 0.95rem; flex: none;
+  }
+  .icon-btn:hover { background: var(--teal-tint); color: var(--rust); }
+  .card-note {
+    width: 100%; border: none; background: transparent; color: var(--ink-soft);
+    font-size: 0.88rem; font-family: inherit; outline: none; padding: 4px 0 0; margin-top: 2px;
+  }
+  .card-note::placeholder { color: var(--ink-faint); }
+  .card-meta { font-size: 0.72rem; color: var(--ink-faint); margin-top: 6px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%) translateY(10px); opacity: 0;
+    background: var(--ink); color: var(--paper); padding: 9px 18px; border-radius: 999px;
+    font-size: 0.88rem; z-index: 50; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---------- tab bar ---------- */
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: flex; background: var(--card); border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .tab-btn {
+    flex: 1; border: none; background: none; cursor: pointer;
+    padding: 10px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    color: var(--ink-faint); font-size: 0.74rem;
+  }
+  .tab-btn .tab-icon { font-size: 1.25rem; }
+  .tab-btn.active { color: var(--teal); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card, .toast { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sbírka zajímavostí</h1>
+</header>
+
+<div id="installBanner" class="banner" style="display:none">
+  <span>Nainstaluj appku — pak ji uvidíš i v nabídce Sdílet.</span>
+  <button class="btn primary" style="width:auto;padding:7px 12px;font-size:0.82rem" id="installBtn" type="button">Nainstalovat</button>
+</div>
+
+<main>
+  <section id="tab-stahnout" class="tab-panel">
+    <div class="capture">
+      <div class="capture-icon">⬇️</div>
+      <input type="text" id="captureUrl" placeholder="Vlož nebo sdílej odkaz…" autocomplete="off" autocapitalize="off" spellcheck="false" />
+      <input type="text" id="captureNote" placeholder="Poznámka (nepovinné)" />
+      <button class="btn primary" id="captureSave" type="button">Uložit</button>
+      <p class="capture-hint">Nebo v Instagramu/Facebooku klepni na Sdílet a vyber tuhle appku.</p>
+    </div>
+  </section>
+
+  <section id="tab-sbirka" class="tab-panel" hidden>
+    <div class="search-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="Hledat…" />
+    </div>
+    <div class="backup-row">
+      <button id="exportBtn" type="button">⬇ Export zálohy</button>
+      <button id="importBtn" type="button">⬆ Import zálohy</button>
+    </div>
+    <input type="file" id="importFile" accept="application/json" style="display:none" />
+    <p id="importStatus" style="display:none"></p>
+    <div id="list"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<nav class="tabbar">
+  <button class="tab-btn active" data-tab="stahnout"><span class="tab-icon">⬇️</span>Stáhnout</button>
+  <button class="tab-btn" data-tab="sbirka"><span class="tab-icon">🗂️</span>Sbírka</button>
+</nav>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "sbirkaZajimavosti.entries.v1";
+  var entries = [];
+  var search = "";
+  var deleteArmed = null;
+  var deleteArmTimer = null;
+  var importArmed = null;
+  var importArmTimer = null;
+  var flashId = null;
+
+  var els = {
+    tabBtns: document.querySelectorAll(".tab-btn"),
+    panels: { stahnout: document.getElementById("tab-stahnout"), sbirka: document.getElementById("tab-sbirka") },
+    captureUrl: document.getElementById("captureUrl"),
+    captureNote: document.getElementById("captureNote"),
+    captureSave: document.getElementById("captureSave"),
+    search: document.getElementById("searchInput"),
+    list: document.getElementById("list"),
+    toast: document.getElementById("toast"),
+    exportBtn: document.getElementById("exportBtn"),
+    importBtn: document.getElementById("importBtn"),
+    importFile: document.getElementById("importFile"),
+    importStatus: document.getElementById("importStatus"),
+    installBanner: document.getElementById("installBanner"),
+    installBtn: document.getElementById("installBtn"),
+  };
+
+  function uid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "id-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+  }
+
+  function normalize(s) {
+    return (s || "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function escapeHtml(s) {
+    return (s || "").replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function fmtDateTime(ts) {
+    if (!ts) return "";
+    var d = new Date(ts);
+    var dd = String(d.getDate()).padStart(2, "0");
+    var mm = String(d.getMonth() + 1).padStart(2, "0");
+    var hh = String(d.getHours()).padStart(2, "0");
+    var min = String(d.getMinutes()).padStart(2, "0");
+    return dd + ". " + mm + ". " + d.getFullYear() + ", " + hh + ":" + min;
+  }
+
+  // ---------- tabs ----------
+
+  function showTab(name) {
+    Object.keys(els.panels).forEach(function (k) {
+      els.panels[k].hidden = k !== name;
+    });
+    els.tabBtns.forEach(function (b) {
+      b.classList.toggle("active", b.getAttribute("data-tab") === name);
+    });
+    if (name === "sbirka") render();
+  }
+
+  els.tabBtns.forEach(function (b) {
+    b.onclick = function () { showTab(b.getAttribute("data-tab")); };
+  });
+
+  // ---------- toast ----------
+
+  var toastTimer = null;
+  function showToast(msg) {
+    els.toast.textContent = msg;
+    els.toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { els.toast.classList.remove("show"); }, 1800);
+  }
+
+  // ---------- persistence ----------
+
+  function loadEntries() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      entries = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(entries)) entries = [];
+    } catch (e) {
+      entries = [];
+    }
+    entries.sort(function (a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    } catch (e) {
+      showToast("Uložení se nepodařilo (plné úložiště?)");
+    }
+  }
+
+  // ---------- capture / save ----------
+
+  function saveEntry(url, note) {
+    url = (url || "").trim();
+    note = (note || "").trim();
+    if (!url) return null;
+    var entry = { id: uid(), url: url, note: note, savedAt: Date.now() };
+    entries.unshift(entry);
+    persist();
+    return entry;
+  }
+
+  function handleCaptureSave() {
+    var entry = saveEntry(els.captureUrl.value, els.captureNote.value);
+    if (!entry) { els.captureUrl.focus(); return; }
+    els.captureUrl.value = "";
+    els.captureNote.value = "";
+    flashId = entry.id;
+    showToast("Uloženo ✓");
+    showTab("sbirka");
+  }
+
+  els.captureSave.onclick = handleCaptureSave;
+  els.captureUrl.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter") handleCaptureSave();
+  });
+
+  // ---------- rendering (Sbírka) ----------
+
+  function filteredEntries() {
+    var q = normalize(search);
+    if (!q) return entries;
+    return entries.filter(function (e) {
+      return normalize(e.url + " " + e.note).indexOf(q) !== -1;
+    });
+  }
+
+  function render() {
+    var list = filteredEntries();
+
+    if (!entries.length) {
+      els.list.innerHTML =
+        '<div class="empty"><div class="glyph">🗂️</div>' +
+        '<h2 class="serif">Zatím prázdno</h2>' +
+        '<p>Vlož odkaz na záložce Stáhnout, nebo ho sdílej rovnou z Instagramu či Facebooku.</p></div>';
+      return;
+    }
+    if (!list.length) {
+      els.list.innerHTML =
+        '<div class="empty"><div class="glyph">🔍</div>' +
+        '<h2 class="serif">Nic nenalezeno</h2><p>Zkus jiné hledání.</p></div>';
+      return;
+    }
+
+    els.list.innerHTML = "";
+    list.forEach(function (e) {
+      var card = document.createElement("div");
+      card.className = "card" + (e.id === flashId ? " flash" : "");
+      var isArmed = deleteArmed === e.id;
+
+      card.innerHTML =
+        '<div class="card-top">' +
+          '<a class="card-link" href="' + escapeHtml(e.url) + '" target="_blank" rel="noopener noreferrer">🔗 ' + escapeHtml(e.url) + "</a>" +
+          '<button class="icon-btn" data-delete="' + e.id + '" aria-label="Smazat">' + (isArmed ? "Opravdu?" : "🗑") + "</button>" +
+        "</div>" +
+        '<input class="card-note" type="text" placeholder="Poznámka…" value="' + escapeHtml(e.note) + '" data-note="' + e.id + '" />' +
+        '<div class="card-meta">' + fmtDateTime(e.savedAt) + "</div>";
+
+      els.list.appendChild(card);
+    });
+
+    if (flashId) {
+      var id = flashId;
+      flashId = null;
+      setTimeout(function () {
+        var el = els.list.querySelector('[data-delete="' + id + '"]');
+        if (el) el.closest(".card").classList.remove("flash");
+      }, 1400);
+    }
+
+    Array.prototype.forEach.call(els.list.querySelectorAll("[data-delete]"), function (btn) {
+      btn.onclick = function () { handleDeleteClick(btn.getAttribute("data-delete")); };
+    });
+    Array.prototype.forEach.call(els.list.querySelectorAll("[data-note]"), function (input) {
+      input.onblur = function () {
+        var id = input.getAttribute("data-note");
+        var e = entries.find(function (x) { return x.id === id; });
+        if (e) { e.note = input.value.trim(); persist(); }
+      };
+    });
+  }
+
+  function handleDeleteClick(id) {
+    if (deleteArmed === id) {
+      clearTimeout(deleteArmTimer);
+      deleteArmed = null;
+      entries = entries.filter(function (e) { return e.id !== id; });
+      persist();
+      render();
+      return;
+    }
+    deleteArmed = id;
+    render();
+    clearTimeout(deleteArmTimer);
+    deleteArmTimer = setTimeout(function () { deleteArmed = null; render(); }, 3000);
+  }
+
+  els.search.oninput = function (ev) { search = ev.target.value; render(); };
+
+  // ---------- export / import ----------
+
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  els.exportBtn.onclick = function () {
+    var blob = new Blob([JSON.stringify(entries, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "sbirka-zajimavosti-zaloha-" + todayStr() + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  };
+
+  els.importBtn.onclick = function () {
+    if (importArmed) {
+      entries = importArmed;
+      importArmed = null;
+      clearTimeout(importArmTimer);
+      persist();
+      render();
+      els.importStatus.style.display = "block";
+      els.importStatus.textContent = "Záloha byla načtena.";
+      return;
+    }
+    els.importFile.click();
+  };
+
+  els.importFile.onchange = function (ev) {
+    var file = ev.target.files && ev.target.files[0];
+    ev.target.value = "";
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = JSON.parse(reader.result);
+        if (!Array.isArray(data)) throw new Error("bad shape");
+        importArmed = data;
+        els.importStatus.style.display = "block";
+        els.importStatus.textContent =
+          "Soubor obsahuje " + data.length + " záznamů a nahradí to, co máš teď uložené. Klepni na Import znovu pro potvrzení.";
+        clearTimeout(importArmTimer);
+        importArmTimer = setTimeout(function () {
+          importArmed = null;
+          els.importStatus.style.display = "none";
+        }, 8000);
+      } catch (e) {
+        els.importStatus.style.display = "block";
+        els.importStatus.textContent = "Tenhle soubor se nepodařilo přečíst jako zálohu.";
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // ---------- share target intake ----------
+
+  function extractUrl(text) {
+    if (!text) return "";
+    var m = text.match(/https?:\/\/\S+/);
+    return m ? m[0] : "";
+  }
+
+  function handleSharedParams() {
+    var params = new URLSearchParams(window.location.search);
+    var sTitle = params.get("shared_title") || "";
+    var sText = params.get("shared_text") || "";
+    var sUrl = params.get("shared_url") || "";
+    if (!sTitle && !sText && !sUrl) return;
+
+    var url = sUrl || extractUrl(sText) || extractUrl(sTitle);
+    history.replaceState(null, "", window.location.pathname);
+    if (!url) return;
+
+    var leftoverText = sText.replace(url, "").trim();
+    var note = leftoverText || (sTitle && sTitle !== url ? sTitle : "");
+
+    var entry = saveEntry(url, note);
+    if (entry) {
+      flashId = entry.id;
+      showToast("Uloženo ✓");
+      showTab("sbirka");
+    }
+  }
+
+  // ---------- install prompt ----------
+
+  var deferredInstallPrompt = null;
+  window.addEventListener("beforeinstallprompt", function (ev) {
+    ev.preventDefault();
+    deferredInstallPrompt = ev;
+    if (window.matchMedia("(display-mode: standalone)").matches) return;
+    els.installBanner.style.display = "flex";
+  });
+  els.installBtn.onclick = function () {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.finally(function () {
+      deferredInstallPrompt = null;
+      els.installBanner.style.display = "none";
+    });
+  };
+  window.addEventListener("appinstalled", function () {
+    els.installBanner.style.display = "none";
+  });
+
+  // ---------- init ----------
+
+  loadEntries();
+  handleSharedParams();
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("./sw.js").catch(function () {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
