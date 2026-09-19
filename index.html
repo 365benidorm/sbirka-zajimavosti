@@ -96,6 +96,18 @@
   .btn.primary:disabled { opacity: 0.4; }
   .btn.ghost { background: transparent; color: var(--ink-soft); border: 1px solid var(--line-strong); }
   .capture-hint { text-align: center; font-size: 0.82rem; color: var(--ink-faint); margin-top: 14px; }
+  .bulk-toggle {
+    display: block; margin: 18px auto 0; background: none; border: none;
+    color: var(--ink-faint); font-size: 0.85rem; cursor: pointer; padding: 6px;
+  }
+  .bulk-toggle:hover { color: var(--teal); }
+  #bulkArea { margin-top: 10px; }
+  #bulkArea textarea {
+    width: 100%; border: 1px solid var(--line-strong); background: var(--card);
+    color: var(--ink); border-radius: 10px; padding: 12px 14px; font-size: 0.92rem;
+    font-family: inherit; outline: none; margin-bottom: 10px; resize: vertical;
+  }
+  #bulkArea textarea:focus { border-color: var(--teal); }
 
   /* ---------- Sbírka tab ---------- */
   .search-wrap {
@@ -195,6 +207,12 @@
       <input type="text" id="captureNote" placeholder="Poznámka (nepovinné)" />
       <button class="btn primary" id="captureSave" type="button">Uložit</button>
       <p class="capture-hint">Nebo v Instagramu/Facebooku klepni na Sdílet a vyber tuhle appku.</p>
+
+      <button class="bulk-toggle" id="bulkToggle" type="button">＋ Vložit více najednou</button>
+      <div id="bulkArea" hidden>
+        <textarea id="bulkUrls" rows="6" placeholder="Jeden odkaz na řádek…"></textarea>
+        <button class="btn primary" id="bulkSave" type="button">Uložit vše</button>
+      </div>
     </div>
   </section>
 
@@ -239,6 +257,10 @@
     captureUrl: document.getElementById("captureUrl"),
     captureNote: document.getElementById("captureNote"),
     captureSave: document.getElementById("captureSave"),
+    bulkToggle: document.getElementById("bulkToggle"),
+    bulkArea: document.getElementById("bulkArea"),
+    bulkUrls: document.getElementById("bulkUrls"),
+    bulkSave: document.getElementById("bulkSave"),
     search: document.getElementById("searchInput"),
     list: document.getElementById("list"),
     toast: document.getElementById("toast"),
@@ -348,6 +370,43 @@
   els.captureUrl.addEventListener("keydown", function (ev) {
     if (ev.key === "Enter") handleCaptureSave();
   });
+
+  els.bulkToggle.onclick = function () {
+    var opening = els.bulkArea.hidden;
+    els.bulkArea.hidden = !opening;
+    els.bulkToggle.textContent = opening ? "－ Skrýt hromadné vkládání" : "＋ Vložit více najednou";
+    if (opening) els.bulkUrls.focus();
+  };
+
+  function handleBulkSave() {
+    var lines = els.bulkUrls.value.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!lines.length) return;
+
+    var existing = {};
+    entries.forEach(function (e) { existing[e.url] = true; });
+
+    var added = 0, skipped = 0, base = Date.now();
+    lines.forEach(function (line, i) {
+      var url = extractUrl(line) || line;
+      if (!/^https?:\/\//i.test(url)) { skipped++; return; }
+      if (existing[url]) { skipped++; return; }
+      existing[url] = true;
+      entries.unshift({ id: uid(), url: url, note: "", savedAt: base + i });
+      added++;
+    });
+
+    entries.sort(function (a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
+    persist();
+    els.bulkUrls.value = "";
+    els.bulkArea.hidden = true;
+    els.bulkToggle.textContent = "＋ Vložit více najednou";
+
+    var msg = "Uloženo " + added + (added === 1 ? " odkaz" : added >= 2 && added <= 4 ? " odkazy" : " odkazů");
+    if (skipped) msg += " (přeskočeno " + skipped + " už uložených/neplatných)";
+    showToast(msg);
+    showTab("sbirka");
+  }
+  els.bulkSave.onclick = handleBulkSave;
 
   // ---------- rendering (Sbírka) ----------
 
