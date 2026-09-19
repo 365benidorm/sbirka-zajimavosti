@@ -108,6 +108,14 @@
     font-family: inherit; outline: none; margin-bottom: 10px; resize: vertical;
   }
   #bulkArea textarea:focus { border-color: var(--teal); }
+  #apiArea { margin-top: 10px; }
+  #apiArea input {
+    width: 100%; border: 1px solid var(--line-strong); background: var(--card);
+    color: var(--ink); border-radius: 8px; padding: 10px 11px; font-size: 0.88rem;
+    font-family: inherit; outline: none; margin-bottom: 8px;
+  }
+  #apiArea input:focus { border-color: var(--teal); }
+  .note-pending { font-size: 0.85rem; color: var(--ink-faint); font-style: italic; margin-top: 4px; }
 
   /* ---------- Sbírka tab ---------- */
   .search-wrap {
@@ -227,6 +235,12 @@
     </div>
     <input type="file" id="importFile" accept="application/json" style="display:none" />
     <p id="importStatus" style="display:none"></p>
+    <button class="bulk-toggle" id="apiToggle" type="button">⚙ Nastavit AI shrnutí</button>
+    <div id="apiArea" hidden>
+      <input type="text" id="apiUrlInput" placeholder="Adresa Apps Script /exec…" />
+      <button class="btn primary" id="apiSaveBtn" type="button">Uložit adresu</button>
+      <p class="capture-hint" id="apiStatus" style="margin-top:8px"></p>
+    </div>
     <div id="list"></div>
   </section>
 </main>
@@ -243,7 +257,10 @@
   "use strict";
 
   var STORAGE_KEY = "sbirkaZajimavosti.entries.v1";
+  var API_URL_KEY = "sbirkaZajimavosti.apiUrl";
   var entries = [];
+  var apiUrl = "";
+  var pendingIds = {};
   var search = "";
   var deleteArmed = null;
   var deleteArmTimer = null;
@@ -268,6 +285,11 @@
     importBtn: document.getElementById("importBtn"),
     importFile: document.getElementById("importFile"),
     importStatus: document.getElementById("importStatus"),
+    apiToggle: document.getElementById("apiToggle"),
+    apiArea: document.getElementById("apiArea"),
+    apiUrlInput: document.getElementById("apiUrlInput"),
+    apiSaveBtn: document.getElementById("apiSaveBtn"),
+    apiStatus: document.getElementById("apiStatus"),
     installBanner: document.getElementById("installBanner"),
     installBtn: document.getElementById("installBtn"),
   };
@@ -364,6 +386,7 @@
     flashId = entry.id;
     showToast("Uloženo ✓");
     showTab("sbirka");
+    if (!entry.note) trySummarize(entry.id, entry.url);
   }
 
   els.captureSave.onclick = handleCaptureSave;
@@ -386,12 +409,15 @@
     entries.forEach(function (e) { existing[e.url] = true; });
 
     var added = 0, skipped = 0, base = Date.now();
+    var newIds = [];
     lines.forEach(function (line, i) {
       var url = extractUrl(line) || line;
       if (!/^https?:\/\//i.test(url)) { skipped++; return; }
       if (existing[url]) { skipped++; return; }
       existing[url] = true;
-      entries.unshift({ id: uid(), url: url, note: "", savedAt: base + i });
+      var id = uid();
+      entries.unshift({ id: id, url: url, note: "", savedAt: base + i });
+      newIds.push({ id: id, url: url });
       added++;
     });
 
@@ -405,8 +431,57 @@
     if (skipped) msg += " (přeskočeno " + skipped + " už uložených/neplatných)";
     showToast(msg);
     showTab("sbirka");
+
+    if (apiUrl) {
+      newIds.forEach(function (item, i) {
+        setTimeout(function () { trySummarize(item.id, item.url); }, i * 500);
+      });
+    }
   }
   els.bulkSave.onclick = handleBulkSave;
+
+  // ---------- AI shrnutí (volitelný Apps Script backend) ----------
+
+  function loadApiUrl() {
+    try { apiUrl = localStorage.getItem(API_URL_KEY) || ""; } catch (e) { apiUrl = ""; }
+    els.apiUrlInput.value = apiUrl;
+  }
+
+  els.apiToggle.onclick = function () {
+    var opening = els.apiArea.hidden;
+    els.apiArea.hidden = !opening;
+    els.apiToggle.textContent = opening ? "－ Skrýt nastavení AI" : "⚙ Nastavit AI shrnutí";
+  };
+
+  els.apiSaveBtn.onclick = function () {
+    apiUrl = els.apiUrlInput.value.trim();
+    try { localStorage.setItem(API_URL_KEY, apiUrl); } catch (e) {}
+    els.apiStatus.textContent = apiUrl ? "Uloženo — nové odkazy se teď zkusí shrnout automaticky." : "AI shrnutí je vypnuté (adresa je prázdná).";
+  };
+
+  function trySummarize(entryId, url) {
+    if (!apiUrl) return;
+    pendingIds[entryId] = true;
+    if (!els.panels.sbirka.hidden) render();
+
+    fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "fetchAndSummarize", url: url }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data && data.ok && data.summary) {
+          var e = entries.find(function (x) { return x.id === entryId; });
+          if (e && !e.note) { e.note = data.summary; persist(); }
+        }
+      })
+      .catch(function () {})
+      .finally(function () {
+        delete pendingIds[entryId];
+        if (!els.panels.sbirka.hidden) render();
+      });
+  }
 
   // ---------- rendering (Sbírka) ----------
 
@@ -440,13 +515,17 @@
       var card = document.createElement("div");
       card.className = "card" + (e.id === flashId ? " flash" : "");
       var isArmed = deleteArmed === e.id;
+      var isPending = !!pendingIds[e.id];
+      var noteHtml = isPending
+        ? '<p class="note-pending">⏳ zjišťuji shrnutí…</p>'
+        : '<input class="card-note" type="text" placeholder="Poznámka…" value="' + escapeHtml(e.note) + '" data-note="' + e.id + '" />';
 
       card.innerHTML =
         '<div class="card-top">' +
           '<a class="card-link" href="' + escapeHtml(e.url) + '" target="_blank" rel="noopener noreferrer">🔗 ' + escapeHtml(e.url) + "</a>" +
           '<button class="icon-btn" data-delete="' + e.id + '" aria-label="Smazat">' + (isArmed ? "Opravdu?" : "🗑") + "</button>" +
         "</div>" +
-        '<input class="card-note" type="text" placeholder="Poznámka…" value="' + escapeHtml(e.note) + '" data-note="' + e.id + '" />' +
+        noteHtml +
         '<div class="card-meta">' + fmtDateTime(e.savedAt) + "</div>";
 
       els.list.appendChild(card);
@@ -576,6 +655,7 @@
       flashId = entry.id;
       showToast("Uloženo ✓");
       showTab("sbirka");
+      if (!entry.note) trySummarize(entry.id, entry.url);
     }
   }
 
@@ -603,6 +683,7 @@
   // ---------- init ----------
 
   loadEntries();
+  loadApiUrl();
   handleSharedParams();
 
   if ("serviceWorker" in navigator) {
